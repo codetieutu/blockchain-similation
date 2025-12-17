@@ -118,56 +118,6 @@ def register_routes(app, blockchain, peers, memPool, add_log, stop_mining_event)
             return jsonify({
                 "error": str(e)
             }), 500
-    
-    subscribers = set()
-    subs_lock = threading.Lock()    
-
-    @app.get("/subcriber/<adđress>")
-    def subscribe(address: str) -> queue.Queue:
-        q = queue.Queue()
-        with subs_lock:
-            address_subs.setdefault(address, set()).add(q)
-        return q
-
-    @app.get("test")
-    def test_subscribe():
-        return jsonify({
-            "address": subscribers.get("address")
-        })
-
-    @app.get("/events")
-    def sse_events():
-        """
-        SSE endpoint:
-        - Trả về text/event-stream
-        - Giữ connection mở và stream event dạng: data: {...}\n\n
-        """
-        q = queue.Queue()
-
-        with subs_lock:
-            subscribers.add(q)
-
-        def gen():
-            try:
-                # (Optional) gửi 1 event chào để client biết đã connect
-                yield "event: hello\ndata: connected\n\n"
-
-                while True:
-                    try:
-                        event = q.get(timeout=15)  # chờ event
-                        yield f"data: {json.dumps(event)}\n\n"
-                    except queue.Empty:
-                        # heartbeat để giữ connection sống (rất quan trọng)
-                        yield "event: ping\ndata: {}\n\n"
-            finally:
-                with subs_lock:
-                    subscribers.discard(q)
-
-        headers = {
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",  # hữu ích nếu sau này chạy qua nginx
-        }
-        return Response(gen(), mimetype="text/event-stream", headers=headers)
 
 def broadcast_new_block(block, peers):
     """

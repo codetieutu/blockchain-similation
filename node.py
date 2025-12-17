@@ -4,7 +4,6 @@ from ObservablePeers import ObservablePeers
 from blockchain import Blockchain
 from api import register_routes
 from MainView import NodeGUI
-from walletGui import WalletGUI
 import requests
 from dotenv import load_dotenv
 import time
