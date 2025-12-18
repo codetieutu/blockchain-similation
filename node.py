@@ -23,6 +23,7 @@ load_dotenv()
 INDEX_ADDRESS = os.getenv("INDEX_ADDRESS")
 MY_ADDRESS = os.getenv("MY_ADDRESS")
 
+
 app = Flask(__name__)
 
 def generate_address(length=12):
@@ -40,7 +41,7 @@ def miner(stop_event):
             if len(memPool) > 0:
                 gui.add_log("đang đào block mới")
                 stop_event.clear()
-                new_block = blockchain.miner(memPool, stop_event, add_log=gui.add_log)
+                new_block = blockchain.miner(memPool, WALLET_ADDRESS, stop_event, add_log=gui.add_log)
 
                 if(new_block):
                     try:
@@ -63,11 +64,12 @@ def run_flask():
     print(f"Đang chạy node Flask trên port {port}...")
     app.run(host="0.0.0.0", port=port, use_reloader=False)
 
+WALLET_ADDRESS = os.getenv("WALLET_ADDRESS") or generate_address()
 
 if __name__ == "__main__":
 
     root = tk.Tk()
-    gui = NodeGUI(root, blockchain, peers, MY_ADDRESS ,wallet_address=generate_address())
+    gui = NodeGUI(root, blockchain, peers, MY_ADDRESS ,wallet_address=WALLET_ADDRESS)
     stop_mining_event = threading.Event()
     register_routes(app, blockchain, peers, memPool, gui.add_log, stop_mining_event)
 
@@ -84,7 +86,9 @@ if __name__ == "__main__":
 
             res = requests.get(f"{INDEX_ADDRESS}/peers", timeout=3)
             data = res.json()
-            peers.update(data.get("peers", []))
+            for peer in data.get("peers", []):
+                if peer != MY_ADDRESS:
+                    peers.add(peer)
             blockchain.sync_chain(peers, gui.add_log)
             gui.add_log("đã cập nhậ dữ liệu")
             for peer in peers:

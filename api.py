@@ -59,9 +59,12 @@ def register_routes(app, blockchain, peers, memPool, add_log, stop_mining_event)
         for peer in list(peers):
             url = f"{peer}/transactions/new"
             try:
-                requests.post(url, json={data}, timeout=3)
+                requests.post(url, json={
+                    "tx_id": tx_id,
+                    "transaction": data.get("transaction")
+                }, timeout=3)
             except Exception as e:
-                print(f"⚠ Không gửi được block tới {peer}: {e}")
+                print(f"⚠ Không gửi được giao dịch tới {peer}: {e}")
 
 
         return jsonify({"message": "Đã thêm transaction vào pending"}), 201
@@ -101,7 +104,9 @@ def register_routes(app, blockchain, peers, memPool, add_log, stop_mining_event)
         peer = data.get("peer")
         if not peer:
             return jsonify({"error": "Thiếu peer"}), 400
-
+        if peer in peers:
+            return jsonify({"message": "Đã thêm peer", "peers": list(peers)}), 201
+        
         peers.add(peer)
         add_log("có 1 node tham gia vào mạng lưới")
         return jsonify({"message": "Đã thêm peer", "peers": list(peers)}), 201

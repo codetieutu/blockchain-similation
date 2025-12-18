@@ -29,35 +29,53 @@ class Blockchain:
         return self.chain[-1]
 
     # ---------- MINING (LOCAL NODE) ----------
-    def miner(self, tx_data, stop_event, add_log):
+    def miner(self, tx_data: list, wallet_address: str, stop_event, add_log):
         """
-        Tạo block mới từ pending_transactions, thưởng cho miner,
-        rồi clear pending.
+        Tạo block mới từ tx_data (list),
+        thêm giao dịch thưởng cho miner,
+        đào block và add vào chain nếu hợp lệ
         """
-        
+
+        REWARD_AMOUNT = 10
+        reward_tx = {
+            "from": "SYSTEM",
+            "to": wallet_address,
+            "amount": REWARD_AMOUNT
+        }
+
+        # Copy tx_data để tránh race condition
+        block_transactions = list(tx_data)
+        block_transactions.append(reward_tx)
+
         previous_block = self.get_latest_block()
+
         new_block = Block(
             index=previous_block.index + 1,
             timestamp=time.time(),
-            transactions=list(tx_data),
+            transactions=block_transactions,
             previous_hash=previous_block.hash,
             nonce=0
         )
         tx_data.clear()
-        new_block.mine(self.difficulty, stop_mining_event = stop_event)
-        if stop_event.is_set():
-            add_log("đã dừng đào")
-            return None
-        
-        if self.is_valid_new_block(new_block, previous_block):
-            add_log("đã đào xong ")
-            self.chain.append(new_block)
-            self._notify();
+        # ====== Đào block ======
+        add_log("⛏️ Bắt đầu đào block...")
+        new_block.mine(self.difficulty, stop_mining_event=stop_event)
 
+        # ====== Nếu bị dừng ======
+        if stop_event.is_set():
+            add_log("⛔ Đã dừng đào")
+            return None
+
+        # ====== Kiểm tra block ======
+        if self.is_valid_new_block(new_block, previous_block):
+            self.chain.append(new_block)
+            add_log("✅ Đào xong block mới")
+            self._notify()
             return new_block
         else:
-            print("❌ Block mới không hợp lệ, không thêm vào chain!")
+            add_log("❌ Block không hợp lệ, không thêm vào chain")
             return None
+
 
     # ---------- NHẬN BLOCK TỪ NODE KHÁC ----------
     def add_block_from_peer(self, block: Block):
